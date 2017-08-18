@@ -42,7 +42,7 @@ typedef enum : NSUInteger {
     RTCMediaStream *_localStream;
     RTCMediaStream *_remoteStream;
     
-    RTCDataChannel *_dataChannel;
+    RTCDataChannel *_localDataChannel;
     RTCDataChannel *_remoteDataChannel;
     
     NSString *_connectId;
@@ -132,102 +132,11 @@ static WebRTCHelper *instance = nil;
 {
     _connectId = nil;
     [_peerConnection close];
-    _peerConnection.delegate = nil;
-    _dataChannel = nil;
-    _dataChannel.delegate = nil;
+    _localDataChannel = nil;
+    _localStream = nil;
+    _remoteDataChannel = nil;
+    _remoteStream = nil;
     _peerConnection = nil;
-}
-
-/**
- *  创建本地流，并且把本地流回调出去
- */
-- (void)createLocalStream
-{
-    _localStream = [_factory mediaStreamWithStreamId:@"ARDAMS"];
-    
-    //音频
-    RTCAudioTrack *audioTrack = [_factory audioTrackWithTrackId:@"ARDAMSa0"];
-    [_localStream addAudioTrack:audioTrack];
-    
-    //视频
-    NSArray *deviceArray = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-    AVCaptureDevice *device = [deviceArray lastObject];
-    //检测摄像头权限
-    AVAuthorizationStatus authStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
-    if(authStatus == AVAuthorizationStatusRestricted || authStatus == AVAuthorizationStatusDenied)
-    {
-        NSLog(@"相机访问受限");
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"提示" message:@"相机访问受限" delegate:self cancelButtonTitle:@"确定" otherButtonTitles:nil];
-        [alertView show];
-    }
-    else
-    {
-        if (device)
-        {
-            RTCAVFoundationVideoSource *videoSource = [_factory avFoundationVideoSourceWithConstraints:[self localVideoConstraints]];
-            RTCVideoTrack *videoTrack = [_factory videoTrackWithSource:videoSource trackId:@"ARDAMSv0"];
-            [_localStream addVideoTrack:videoTrack];
-            if ([_chatdelegate respondsToSelector:@selector(webRTCHelper:setLocalStream:)])
-            {
-                [_chatdelegate webRTCHelper:self setLocalStream:_localStream];
-            }
-            
-        }
-        else
-        {
-            NSLog(@"该设备不能打开摄像头");
-            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"提示" message:@"该设备不能打开摄像头" delegate:self cancelButtonTitle:@"确定" otherButtonTitles:nil];
-            [alertView show];
-        }
-    }
-    
-}
-
-/**
- *  视频的相关约束
- */
-- (RTCMediaConstraints *)localVideoConstraints
-{
-    RTCMediaConstraints *constraints = [[RTCMediaConstraints alloc] initWithMandatoryConstraints:@{kRTCMediaConstraintsMaxWidth:@"640",kRTCMediaConstraintsMinWidth:@"640",kRTCMediaConstraintsMaxHeight:@"480",kRTCMediaConstraintsMinHeight:@"480",kRTCMediaConstraintsMinFrameRate:@"15"} optionalConstraints:nil];
-    return constraints;
-}
-
-/**
- *  为连接创建dataChannel
- */
-- (void)createDataChannel
-{
-    //给点对点连接，创建dataChannel
-    
-    RTCDataChannelConfiguration *dataChannelConfiguration = [[RTCDataChannelConfiguration alloc] init];
-    dataChannelConfiguration.isOrdered = YES;
-    _dataChannel = [_peerConnection dataChannelForLabel:@"testDataChannel" configuration:dataChannelConfiguration];
-    _dataChannel.delegate = self;
-    
-}
-
-/**
- *  为所有连接创建offer
- */
-- (void)createOffer
-{
-    //给每一个点对点连接，都去创建offer
-    _role = RoleCaller;
-    [_peerConnection offerForConstraints:[self creatAnswerOrOfferConstraint] completionHandler:^(RTCSessionDescription * _Nullable sdp, NSError * _Nullable error) {
-        __weak RTCPeerConnection *peerConnection = _peerConnection;
-        [peerConnection setLocalDescription:sdp completionHandler:^(NSError * _Nullable error) {
-            [self setSessionDescriptionWithPeerConnection:peerConnection];
-        }];
-    }];
-}
-
-/**
- *  设置offer/answer的约束
- */
-- (RTCMediaConstraints *)creatAnswerOrOfferConstraint
-{
-    RTCMediaConstraints *constraints = [[RTCMediaConstraints alloc] initWithMandatoryConstraints:@{kRTCMediaConstraintsOfferToReceiveAudio:kRTCMediaConstraintsValueTrue,kRTCMediaConstraintsOfferToReceiveVideo:kRTCMediaConstraintsValueTrue} optionalConstraints:nil];
-    return constraints;
 }
 
 /**
@@ -260,7 +169,6 @@ static WebRTCHelper *instance = nil;
     return connection;
 }
 
-
 - (RTCMediaConstraints *)creatPeerConnectionConstraint
 {
     RTCMediaConstraints *constraints = [[RTCMediaConstraints alloc] initWithMandatoryConstraints:@{kRTCMediaConstraintsOfferToReceiveAudio:kRTCMediaConstraintsValueTrue,kRTCMediaConstraintsOfferToReceiveVideo:kRTCMediaConstraintsValueTrue} optionalConstraints:nil];
@@ -270,6 +178,94 @@ static WebRTCHelper *instance = nil;
 //初始化STUN Server （ICE Server）
 - (RTCIceServer *)defaultSTUNServer{
     return [[RTCIceServer alloc] initWithURLStrings:@[RTCSTUNServerURL,RTCSTUNServerURL2]];
+}
+
+/**
+ *  创建本地流，并且把本地流回调出去
+ */
+- (void)createLocalStream
+{
+    _localStream = [_factory mediaStreamWithStreamId:@"ARDAMS"];
+    
+    //音频
+    RTCAudioTrack *audioTrack = [_factory audioTrackWithTrackId:@"ARDAMSa0"];
+    [_localStream addAudioTrack:audioTrack];
+    
+    //视频
+    NSArray *deviceArray = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    AVCaptureDevice *device = [deviceArray lastObject];
+    //检测摄像头权限
+    AVAuthorizationStatus authStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+    if(authStatus == AVAuthorizationStatusRestricted || authStatus == AVAuthorizationStatusDenied)
+    {
+        NSLog(@"相机访问受限");
+        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"提示" message:@"相机访问受限" delegate:self cancelButtonTitle:@"确定" otherButtonTitles:nil];
+        [alertView show];
+    }
+    else
+    {
+        if (device)
+        {
+            RTCAVFoundationVideoSource *videoSource = [_factory avFoundationVideoSourceWithConstraints:[self localVideoConstraints]];
+            RTCVideoTrack *videoTrack = [_factory videoTrackWithSource:videoSource trackId:@"ARDAMSv0"];
+            [_localStream addVideoTrack:videoTrack];
+            
+        }
+        else
+        {
+            NSLog(@"该设备不能打开摄像头");
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"提示" message:@"该设备不能打开摄像头" delegate:self cancelButtonTitle:@"确定" otherButtonTitles:nil];
+            [alertView show];
+        }
+    }
+    
+}
+
+/**
+ *  视频的相关约束
+ */
+- (RTCMediaConstraints *)localVideoConstraints
+{
+    RTCMediaConstraints *constraints = [[RTCMediaConstraints alloc] initWithMandatoryConstraints:@{kRTCMediaConstraintsMaxWidth:@"640",kRTCMediaConstraintsMinWidth:@"640",kRTCMediaConstraintsMaxHeight:@"480",kRTCMediaConstraintsMinHeight:@"480",kRTCMediaConstraintsMinFrameRate:@"15"} optionalConstraints:nil];
+    return constraints;
+}
+
+/**
+ *  为连接创建dataChannel
+ */
+- (void)createDataChannel
+{
+    //给点对点连接，创建dataChannel
+    
+    RTCDataChannelConfiguration *dataChannelConfiguration = [[RTCDataChannelConfiguration alloc] init];
+    dataChannelConfiguration.isOrdered = YES;
+    _localDataChannel = [_peerConnection dataChannelForLabel:@"testDataChannel" configuration:dataChannelConfiguration];
+    _localDataChannel.delegate = self;
+    
+}
+
+/**
+ *  为所有连接创建offer
+ */
+- (void)createOffer
+{
+    //给每一个点对点连接，都去创建offer
+    _role = RoleCaller;
+    [_peerConnection offerForConstraints:[self creatAnswerOrOfferConstraint] completionHandler:^(RTCSessionDescription * _Nullable sdp, NSError * _Nullable error) {
+        __weak RTCPeerConnection *peerConnection = _peerConnection;
+        [peerConnection setLocalDescription:sdp completionHandler:^(NSError * _Nullable error) {
+            [self setSessionDescriptionWithPeerConnection:peerConnection];
+        }];
+    }];
+}
+
+/**
+ *  设置offer/answer的约束
+ */
+- (RTCMediaConstraints *)creatAnswerOrOfferConstraint
+{
+    RTCMediaConstraints *constraints = [[RTCMediaConstraints alloc] initWithMandatoryConstraints:@{kRTCMediaConstraintsOfferToReceiveAudio:kRTCMediaConstraintsValueTrue,kRTCMediaConstraintsOfferToReceiveVideo:kRTCMediaConstraintsValueTrue} optionalConstraints:nil];
+    return constraints;
 }
 
 // Called when setting a local or remote description.
@@ -336,6 +332,10 @@ static WebRTCHelper *instance = nil;
     
     _remoteStream = stream;
     dispatch_async(dispatch_get_main_queue(), ^{
+        if ([_chatdelegate respondsToSelector:@selector(webRTCHelper:setLocalStream:)])
+        {
+            [_chatdelegate webRTCHelper:self setLocalStream:_localStream];
+        }
         if ([_chatdelegate respondsToSelector:@selector(webRTCHelper:setRemoteStream:)])
         {
             [_chatdelegate webRTCHelper:self setRemoteStream:_remoteStream];
@@ -353,7 +353,7 @@ static WebRTCHelper *instance = nil;
 /** Called when negotiation is needed, for example ICE has restarted. */
 - (void)peerConnectionShouldNegotiate:(RTCPeerConnection *)peerConnection
 {
-    
+    NSLog(@"%s",__func__);
 }
 
 /** Called any time the IceConnectionState changes. */
@@ -361,6 +361,7 @@ static WebRTCHelper *instance = nil;
 {
     NSLog(@"%s",__func__);
     NSLog(@"%ld", (long)newState);
+    //断开peerconection
     if (newState == RTCIceConnectionStateDisconnected) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if ([_chatdelegate respondsToSelector:@selector(webRTCHelper:closeChatWithUserId:)]) {
@@ -437,7 +438,7 @@ static WebRTCHelper *instance = nil;
 {
     
     RTCDataBuffer *buffer = [[RTCDataBuffer alloc] initWithData:[message dataUsingEncoding:NSUTF8StringEncoding] isBinary:NO];
-    BOOL result = [_dataChannel sendData:buffer];
+    BOOL result = [_localDataChannel sendData:buffer];
     if (result) {
         NSLog(@"success");
     }

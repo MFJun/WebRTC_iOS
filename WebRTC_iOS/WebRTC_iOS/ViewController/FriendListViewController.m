@@ -65,7 +65,8 @@
 //连接到房间
 - (void)connectAction
 {
-    [[WebRTCHelper sharedInstance]connectServer:@"172.16.102.59" port:@"3000" room:@"100"];
+    [[WebRTCHelper sharedInstance] connectServer:@"172.16.102.59" port:@"3000" room:@"100"];
+
 }
 
 #pragma  mark ** WebRTCHelperFriendListDelegate协议方法
@@ -97,7 +98,6 @@
 - (void)requestConnectWithUserId:(NSString *)userId
 {
     ChatViewController *chatViewController = [[ChatViewController alloc] init];
-//    [WebRTCHelper sharedInstance].chatdelegate = chatViewController;
     [self.navigationController pushViewController:chatViewController animated:YES];
 }
 
@@ -158,9 +158,6 @@
     ChatViewController *chatViewController = [[ChatViewController alloc] init];
     chatViewController.userId = self.informationArray[indexPath.row];
     [self.navigationController pushViewController:chatViewController animated:YES];
-//    [WebRTCHelper sharedInstance].chatdelegate = chatViewController;
-//    NSString *userId = self.informationArray[indexPath.row];
-//    [[WebRTCHelper sharedInstance] connectWithUserId:userId];
 }
 
 - (void)didReceiveMemoryWarning {
