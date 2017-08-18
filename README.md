@@ -1,4 +1,5 @@
-# WebRTC_iOS[![Build Status](https://travis-ci.org/MFJun/WebRTC_iOS.svg?branch=master)](https://travis-ci.org/MFJun/WebRTC_iOS)
+# WebRTC_iOS
+[![Build Status](https://travis-ci.org/MFJun/WebRTC_iOS.svg?branch=master)](https://travis-ci.org/MFJun/WebRTC_iOS)
 
 ### 下载与编译
 WebRTC.framework下载与编译，可以看这篇文章[iOS下载、编译WebRTC](http://www.jianshu.com/p/64bd7f5b18b1)
